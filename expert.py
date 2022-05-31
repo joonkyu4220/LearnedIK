@@ -35,10 +35,8 @@ class Expert():
     
     def init_nets(self):
         if self.args.ik_ver == 0:
-            self.iknet = IKNet(self.args.repr)
-        self.fknet = FKNet(self.args.lengths, self.args.repr, self.args.normalize)
-        self.iknet = self.iknet.to(self.args.device)
-        self.fknet = self.fknet.to(self.args.device)
+            self.iknet = IKNet(self.args.repr, self.args.activation).to(self.args.device)
+        self.fknet = FKNet(self.args.lengths, self.args.repr, self.args.normalize).to(self.args.device)
         return
     
     def init_optimizer(self):
@@ -70,7 +68,7 @@ class LossManager():
         for (key, val) in args.loss.items():
             if val == "L1":
                 self.loss_fn[key] = L1Loss()
-            elif val == "L2":
+            elif val == "MSE":
                 self.loss_fn[key] = MSELoss()
         self.weights = args.weights
     

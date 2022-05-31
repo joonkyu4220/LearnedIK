@@ -2,22 +2,31 @@ import torch
 import torch.nn as nn
 
 class IKNet(nn.Module):
-    def __init__(self, repr):
+    def __init__(self, repr, activation="ReLU"):
         super().__init__()
         self.repr = repr
 
         self.input_dims = [400, 300, 200, 100, 50]
+        
+        if activation == "ReLU":
+            self.activation = nn.ReLU()
+        elif activation == "LeakyReLU":
+            self.activation = nn.LeakyReLU()
+        elif activation == "Tanh":
+            self.activation == nn.Tanh()
+        
         self.dropout = 0.1
 
         layers = []
 
         input_dim = 4 if self.repr == "COSSIN" else 3
+        
         layers.append(nn.BatchNorm1d(input_dim))
 
         for output_dim in self.input_dims:
             layers.append(nn.Linear(input_dim, output_dim))
             layers.append(nn.BatchNorm1d(output_dim))
-            layers.append(nn.ReLU())
+            layers.append(self.activation)
             layers.append(nn.Dropout(self.dropout))
             input_dim = output_dim
 

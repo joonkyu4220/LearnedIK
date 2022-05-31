@@ -6,18 +6,19 @@ DATA_PATH = os.path.join(".", "datasets")
 RESULT_PATH = os.path.join(".", "results")
 MODEL_PATH = os.path.join(".", "models")
 LOG_PATH = os.path.join(".", "runs")
-BATCH_SIZE = 64
 
 LENGTHS = [1.0, 2.0, 1.0]
 MIN_BOUND = 0.0
 MAX_BOUND = 0.333
 
+WEIGHTS = {"ee_pos":1.0, "ee_rot":1.0, "rot_norm":0.0, "rot":0.0} # ee_pos, ee_rot, rot_norm, rot
+LOSS = {"ee_pos":"L1", "ee_rot":"L1", "rot_norm":"L1", "rot":"L1"} # "MSE"
+ACTIVATION = "ReLU" # "LeakyReLU", "Tanh"
 WEIGHT_DECAY = 1e-3
 LEARNING_RATE = 1e-4
-WEIGHTS = {"ee_pos":1.0, "ee_rot":1.0, "rot_norm":0.0, "rot":0.0} # ee_pos, ee_rot, rot_norm, rot
-LOSS = {"ee_pos":"L1", "ee_rot":"L1", "rot_norm":"L1", "rot":"L1"} # "L2"
 OPTIMIZER = "Adam"
 SCHEDULER = "Exponential"
+BATCH_SIZE = 64
 
 NORMALIZE = True
 
@@ -41,51 +42,62 @@ class Args():
                 lengths=LENGTHS,
                 min_bound=MIN_BOUND,
                 max_bound=MAX_BOUND,
-                batch_size=BATCH_SIZE,
+                
                 weights=WEIGHTS,
-                weight_decay=WEIGHT_DECAY,
                 loss=LOSS,
+                activation=ACTIVATION,
+                weight_decay=WEIGHT_DECAY,
+                learning_rate=LEARNING_RATE,
                 optimizer=OPTIMIZER,
                 scheduler=SCHEDULER,
-                repr=REPR,
+                batch_size=BATCH_SIZE,
+                
                 normalize=NORMALIZE,
+
+                repr=REPR,
+                data_label=DATA_LABEL,
+                
                 ik_ver = IK_VER,
-                epoch=START_EPOCH,
-                learning_rate=LEARNING_RATE,
+                
                 max_epoch=MAX_EPOCH,
                 save_freq=SAVE_FREQ,
                 verbose_freq = VERBOSE_FREQ,
-                data_label=DATA_LABEL
+                epoch=START_EPOCH,
                 ):
         self.device = device
         self.data_path = data_path
         self.result_path = result_path
         self.model_path = model_path
         self.log_path = log_path
+
         self.lengths = lengths
         self.min_bound = min_bound
         self.max_bound = max_bound
-        self.batch_size = batch_size
+
         self.weights = weights
-        self.weight_decay = weight_decay
         self.loss = loss
+        self.activation = activation        
+        self.weight_decay = weight_decay
+        self.learning_rate = learning_rate
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.pos_scale = None
-        self.rot_scale = None
-        self.repr = repr
+        self.batch_size = batch_size
+
         self.normalize = normalize
+        
+        self.repr = repr
+        self.data_label = data_label
+        
         self.ik_ver = ik_ver
-        self.epoch = epoch
-        self.learning_rate = learning_rate
+        
         self.max_epoch = max_epoch
         self.save_freq = save_freq
         self.verbose_freq = verbose_freq
-        self.data_label = data_label
+        self.epoch = epoch
 
-        self.set_dir_name()
+        self.set_dirs()
         
-    def set_dir_name(self):
+    def set_dirs(self):
         dir_name = ""
         dir_name += f"REPR[{self.repr}{self.normalize}]"
         dir_name += f"RANGE[{self.min_bound}{self.max_bound}]"
