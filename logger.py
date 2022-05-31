@@ -43,14 +43,14 @@ class Logger():
         return
 
     def write_loss(self, mode):
-        for (k, v) in self.loss_dic.items():
-            self.writer.add_scalar(mode + "/" + k, v, self.args.epoch)
-            print(f"avg {k} loss: {v:>8f}")
+        for (key, val) in self.loss_dic.items():
+            self.writer.add_scalar(mode + "/" + key, val, self.args.epoch)
+            print(f"avg {key} loss: {val:>8f}")
         return
 
     def save_txt(self, keys=["x", "y", "recon", "rot"]):
         results = torch.cat([self.result_dic[key] for key in keys], dim=1).cpu().numpy()
-        np.savetxt(os.path.join(self.result_path, f"{self.args.epoch}.txt"), results)
+        np.savetxt(os.path.join(self.result_path, f"{self.args.epoch}.txt"), results, fmt="%2.5f", delimiter="\t")
         return
     def save_fig(self, x_key="x", recon_key="recon", file_name=None, x_dim=0, recon_dim=0, s=0.01):
         if file_name is None:

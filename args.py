@@ -1,5 +1,4 @@
 import os
-from pickle import NONE
 import torch
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -9,18 +8,18 @@ MODEL_PATH = os.path.join(".", "models")
 LOG_PATH = os.path.join(".", "runs")
 BATCH_SIZE = 64
 
-LENGTHS = [1.0, 1.0, 1.0] 
+LENGTHS = [1.0, 2.0, 1.0]
 MIN_BOUND = 0.0
-MAX_BOUND = 0.5
+MAX_BOUND = 0.333
 
 WEIGHT_DECAY = 1e-3
 LEARNING_RATE = 1e-4
-WEIGHTS = {"ee_pos":1.0, "ee_rot":1.0, "rot_norm":1.0, "rot":0.0} # ee_pos, ee_rot, rot_norm, rot
+WEIGHTS = {"ee_pos":1.0, "ee_rot":1.0, "rot_norm":0.0, "rot":0.0} # ee_pos, ee_rot, rot_norm, rot
 LOSS = {"ee_pos":"L1", "ee_rot":"L1", "rot_norm":"L1", "rot":"L1"} # "L2"
 OPTIMIZER = "Adam"
 SCHEDULER = "Exponential"
 
-NORMALIZE = False
+NORMALIZE = True
 
 REPR = "COSSIN" # "ANGLE"
 DATA_LABEL = {"ee_pos":(0, 2), "ee_rot":(2, 4), "rot":(0, 6)} if REPR == "COSSIN" else {"ee_pos":(0, 2), "ee_rot":(2, 3), "rot":(0, 3)}
@@ -30,7 +29,7 @@ IK_VER = 0
 MAX_EPOCH = 500
 SAVE_FREQ = 50
 VERBOSE_FREQ = 1000
-START_EPOCH = 0
+START_EPOCH = "latest"
 
 class Args():
     def __init__(self,
@@ -88,7 +87,7 @@ class Args():
         
     def set_dir_name(self):
         dir_name = ""
-        dir_name += f"REPR[{self.repr}]"
+        dir_name += f"REPR[{self.repr}{self.normalize}]"
         dir_name += f"RANGE[{self.min_bound}{self.max_bound}]"
         dir_name += f"LEN[{self.lengths[0]},{self.lengths[1]},{self.lengths[2]}]"
         dir_name += f"WEIGHTS[{self.weights['ee_pos']},{self.weights['ee_rot']},{self.weights['rot_norm']},{self.weights['rot']}]"

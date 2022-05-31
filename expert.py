@@ -18,14 +18,19 @@ class Expert():
         self.init_optimizer()
         if self.args.epoch != 0:
             if self.args.epoch == "latest":
-                pre_len = len(self.args.model_path) + 2
                 suf_len = 3
-                self.args.epoch = max([int(epoch[pre_len:-suf_len]) for epoch in glob.glob(self.args.model_path+"/*.pt")])
+                epochs = [int(epoch[:-suf_len]) for epoch in os.listdir(self.args.model_path)]
+                self.args.epoch = max(epochs) if len(epochs) else 0
             load_model_path = os.path.join(self.args.model_path, str(self.args.epoch)+".pt")
-            self.args.epoch += 1
-            model = torch.load(load_model_path)
-            self.iknet.load_state_dict(model["iknet_state_dict"])
-            self.optimizer.load_state_dict(model["optimizer_state_dict"])
+            print(f"Trying to load: {load_model_path}")
+            if os.path.isfile(load_model_path):
+                model = torch.load(load_model_path)
+                self.iknet.load_state_dict(model["iknet_state_dict"])
+                self.optimizer.load_state_dict(model["optimizer_state_dict"])
+                print(f"Successfully loaded {load_model_path}")
+            else:
+                print("!PRETRAINED MODEL NOT FOUND!\nSTARTING FROM THE TOP...")
+                self.args.epoch = 0
         self.args.epoch += 1
     
     def init_nets(self):
@@ -62,20 +67,20 @@ class LossManager():
         self.device = args.device
         self.repr = args.repr
         self.loss_fn = {}
-        for (k, v) in args.loss.items():
-            if v == "L1":
-                self.loss_fn[k] = L1Loss()
-            elif v == "L2":
-                self.loss_fn[k] = MSELoss()
+        for (key, val) in args.loss.items():
+            if val == "L1":
+                self.loss_fn[key] = L1Loss()
+            elif val == "L2":
+                self.loss_fn[key] = MSELoss()
         self.weights = args.weights
     
     def compute_losses(self, x, y, pred, recon):
         ee_pos_loss = self.loss_fn["ee_pos"](x[:2], recon[:2]) if self.weights["ee_pos"] > 0.0 else 0
         ee_rot_loss = self.loss_fn["ee_rot"](x[2:], recon[2:]) if self.weights["ee_rot"] > 0.0 else 0
-        rot_norm_loss = self.loss_fn["rot_norm"](torch.norm(pred, dim=1), torch.ones(pred.shape[0]).to(self.device))\
+        rot_norm_loss = self.loss_fn["rot_norm"](torch.norm(pred, dim=1), torch.ones_like(pred[:, 0]).to(self.device))\
                         if (self.weights["rot_norm"] > 0.0 and self.repr == "COSSIN") \
                         else 0
-        rot_loss = self.loss_fn["rot"](y, pred)
+        rot_loss = self.loss_fn["rot"](y, pred) if self.weights["rot"] > 0.0 else 0
         weighted_sum = self.weights["ee_pos"] * ee_pos_loss + self.weights["ee_rot"] * ee_rot_loss + self.weights["rot_norm"] * rot_norm_loss + self.weights["rot"] * rot_loss
         return {"ee_pos": ee_pos_loss, "ee_rot": ee_rot_loss, "rot_norm": rot_norm_loss, "rot": rot_loss, "total": weighted_sum}
 
@@ -94,14 +99,14 @@ class ExpertTrainer():
             rot = self.expert.iknet(x)
             recon = self.expert.fknet(rot)
             loss_dic = self.loss_manager.compute_losses(x, y, rot, recon)
-            self.logger.add_loss({key: val.item() for (key, val) in loss_dic.items()})
+            self.logger.add_loss({key: val.item() if val else val for (key, val) in loss_dic.items()})
             self.expert.optimizer.zero_grad()
             loss_dic["total"].backward()
             self.expert.optimizer.step()
             if (batch % self.args.verbose_freq == 0):
                 print(f"====================BATCH {batch}====================")
-                for k, v in loss_dic.items():
-                    print(f"{k}: {v.item():>7f}")
+                for key, val in loss_dic.items():
+                    print(f"{key}: {val.item() if val else val:>7f}")
         self.logger.average_loss(self.data_manager.num_batches["TRAIN"])
         self.logger.write_loss("TRAIN")
         self.args.epoch += 1
@@ -115,7 +120,7 @@ class ExpertTrainer():
                 rot = self.expert.iknet(x)
                 recon = self.expert.fknet(rot)
                 loss_dic = self.loss_manager.compute_losses(x, y, rot, recon)
-                self.logger.add_loss({key: val.item() for (key, val) in loss_dic.items()})
+                self.logger.add_loss({key: val.item() if val else val for (key, val) in loss_dic.items()})
                 self.logger.add_result({"x": x, "y": y, "recon": recon, "rot": rot})
         self.logger.average_loss(self.data_manager.num_batches["TEST"])
         self.logger.write_loss("TEST")

@@ -44,13 +44,13 @@ class FKNet(nn.Module):
         x_norm[:, 4:6] = x[:, 4:6] / torch.sqrt(torch.sum(torch.square(x[:, 4:6]), dim=1, keepdim=True))
         return x_norm
 
-    def forward(self, x):
+    def forward(self, rot):
         if self.repr == "ANGLE":
-            q0 = torch.sum(x[:, 0:1], dim=1, keepdim=True)
-            q01 = torch.sum(x[:, 0:2], dim=1, keepdim=True)
-            q02 = torch.sum(x[:, 0:3], dim=1, keepdim=True)
-            c00 = torch.cos(q0)
-            s00 = torch.sin(q0)
+            q00 = torch.sum(rot[:, 0:1], dim=1, keepdim=True)
+            q01 = torch.sum(rot[:, 0:2], dim=1, keepdim=True)
+            q02 = torch.sum(rot[:, 0:3], dim=1, keepdim=True)
+            c00 = torch.cos(q00)
+            s00 = torch.sin(q00)
             c01 = torch.cos(q01)
             s01 = torch.sin(q01)
             c02 = torch.cos(q02)
@@ -59,14 +59,13 @@ class FKNet(nn.Module):
             y = self.l0 * s00 + self.l1 * s01 + self.l2 * s02
             return torch.cat([x, y, q02], dim=1)
         elif self.repr == "COSSIN":
-            if self.normalize:
-                x = self.normalized(x)
-            c00 = x[:, 0:1]
-            s00 = x[:, 1:2]
-            c01 = c00 * x[:, 2:3] - s00 * x[:, 3:4]
-            s01 = s00 * x[:, 2:3] + c00 * x[:, 3:4]
-            c02 = c01 * x[:, 4:5] - s01 * x[:, 5:6]
-            s02 = s01 * x[:, 4:5] + c01 * x[:, 5:6]
+            rot_norm = self.normalized(rot) if self.normalize else rot
+            c00 = rot_norm[:, 0:1]
+            s00 = rot_norm[:, 1:2]
+            c01 = c00 * rot_norm[:, 2:3] - s00 * rot_norm[:, 3:4]
+            s01 = s00 * rot_norm[:, 2:3] + c00 * rot_norm[:, 3:4]
+            c02 = c01 * rot_norm[:, 4:5] - s01 * rot_norm[:, 5:6]
+            s02 = s01 * rot_norm[:, 4:5] + c01 * rot_norm[:, 5:6]
             x = self.l0 * c00 + self.l1 * c01 + self.l2 * c02
             y = self.l0 * s00 + self.l1 * s01 + self.l2 * s02
             return torch.cat([x, y, c02, s02], dim = 1)
