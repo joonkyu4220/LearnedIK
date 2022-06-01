@@ -52,6 +52,7 @@ class Logger():
         results = torch.cat([self.result_dic[key] for key in keys], dim=1).cpu().numpy()
         np.savetxt(os.path.join(self.result_path, f"{self.args.epoch}.txt"), results, fmt="%2.5f", delimiter="\t")
         return
+
     def save_fig(self, x_key="x", recon_key="recon", file_name=None, x_dim=0, recon_dim=0, s=0.01):
         if file_name is None:
             file_name = f"{self.args.epoch}.png"
@@ -59,9 +60,15 @@ class Logger():
         recon = self.result_dic[recon_key][:, recon_dim:recon_dim+2].cpu().numpy()
         colors = pos_to_color(xy)/255
         plt.scatter(recon[:, 0], recon[:, 1], s=s, c=colors)
+        plt.xlim([-7, 7])
+        plt.ylim([-7, 7])
         plt.savefig(os.path.join(self.result_path, file_name))
+        plt.clf()
         if self.new:
             plt.scatter(xy[:, 0], xy[:, 1], s=s, c=colors)
+            plt.xlim([-7, 7])
+            plt.ylim([-7, 7])
             plt.savefig(os.path.join(self.result_path, "GT.png"))
+            plt.clf()
             self.new = False
         return

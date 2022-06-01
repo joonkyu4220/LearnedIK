@@ -6,8 +6,10 @@ import os
 
 class IKDataset(Dataset):
     def __init__(self, input_path, gt_path, device):
+        print("Loading data...")
         self.input = torch.load(input_path, map_location = device)
         self.gt = torch.load(gt_path, map_location = device)
+        print(f"Dataset contains: {self.input.shape[0]} data")
 
     def __len__(self):
         return self.input.shape[0]
@@ -22,7 +24,7 @@ class DataManager():
         self.dataloaders = {}
         self.num_batches = {}
         self.init("TRAIN")
-        self.init("VALIDATION", False)
+        # self.init("VALIDATION", False)
         self.init("TEST", False)
 
     def init(self, mode, shuffle=True):
