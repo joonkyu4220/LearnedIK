@@ -34,11 +34,14 @@ class MixtureOfExperts():
             else:
                 print("!PRETRAINED MODEL NOT FOUND!\nSTARTING FROM THE TOP...")
                 self.args.epoch = 0
+            
         self.args.epoch += 1
 
     def init_nets(self):
         if self.args.gating_ver == 0:
             self.gatingnet = GatingNet(self.args).to(self.args.device)
+        elif self.args.gating_ver == 1:
+            self.gatingnet = GatingNet1(self.args).to(self.args.device)
         self.fknet = FKNet(self.args).to(self.args.device)
         return
 
@@ -78,34 +81,38 @@ class MOETrainer():
         self.data_manager = DataManager(self.args)
 
     def weight(self, weights, rots):
-        if self.args.repr == "COSSIN":
-            weighted_q = weights.repeat_interleave(3, dim=1) * torch.arctan2(rots[:, [1, 3, 5]], rots[:, [0, 2, 4]])
-            return torch.cat([torch.cos(weighted_q), torch.sin(weighted_q)], dim=1)[:, [0, 3, 1, 4, 2, 5]]
+        if self.args.repr == "ANGLE":
+            return torch.sum(weights[:, :, None] * rots, dim=1)
         else:
-            weighted_q = weights.reshape(1, -1) * rots
-            return weighted_q
-        
+            # atan = torch.arctan2(rots[:, :, [1, 3, 5]], rots[:, :, [0, 2, 4]])
+            # atan = (atan >= 0) * atan + (atan < 0) * (atan + torch.pi)
+            # weighted = torch.sum(weights[:, :, None] * atan, dim=1)
+            # return torch.cat([torch.cos(weighted), torch.sin(weighted)], dim=1)[:, [0, 3, 1, 4, 2, 5]]
+            return torch.sum(weights[:, :, None] * rots, dim=1)
+
     def train_step(self):
         self.moe.gatingnet.train()
         for batch, (x, y) in enumerate(self.data_manager.dataloaders["TRAIN"]):
             weights = self.moe.gatingnet(x)
             rots = []
             for expert in self.moe.experts:
-                rots.append(expert.ik(x[:, 3:]))
+                rots.append(expert.ik(x)[:, None, :])
             rot = self.weight(weights, torch.cat(rots, dim=1))
             recon = self.moe.fk(rot, x[:, :3])
             loss_dic = self.loss_manager.compute_losses(x[:, 3:], y, rot, recon)
             self.logger.add_loss({key: val.item() if val else val for (key, val) in loss_dic.items()})
             self.moe.optimizer.zero_grad()
             
-            # for expert in self.experts:
-            #     expert.optimizer.zero_grad()
+            if self.args.epoch > self.args.e2e_epoch:
+                for expert in self.moe.experts:
+                    expert.optimizer.zero_grad()
 
             loss_dic["total"].backward()
             self.moe.optimizer.step()
 
-            # for expert in self.experts:
-            #     expert.optimizer.step()
+            if self.args.epoch > self.args.e2e_epoch:
+                for expert in self.moe.experts:
+                    expert.optimizer.step()
 
             if (batch % self.args.verbose_freq == 0):
                 print(f"====================BATCH {batch}====================")
@@ -113,11 +120,6 @@ class MOETrainer():
                     print(f"{key}: {val.item() if val else val:>7f}")
         self.logger.average_loss(self.data_manager.num_batches["TRAIN"])
         self.logger.write_loss("TRAIN")
-        self.args.epoch += 1
-
-        # for expert in self.experts:
-        #     expert.args.epoch += 1
-        
         self.logger.reset()
 
     def test(self):
@@ -127,16 +129,16 @@ class MOETrainer():
                 weights = self.moe.gatingnet(x)
                 rots = []
                 for expert in self.moe.experts:
-                    rots.append(expert.ik(x[:, 3:]))
+                    rots.append(expert.ik(x)[:, None, :])
                 rot = self.weight(weights, torch.cat(rots, dim=1))
                 recon = self.moe.fk(rot, x[:, :3])
                 loss_dic = self.loss_manager.compute_losses(x[:, 3:], y, rot, recon)
                 self.logger.add_loss({key: val.item() if val else val for (key, val) in loss_dic.items()})
-                self.logger.add_result({"x": x[:, 3:], "y": y, "recon": recon, "rot": rot})
+                self.logger.add_result({"x": x[:, 3:], "y": y, "recon": recon, "rot": rot, "w": weights, "l": x[:, :3]})
         self.logger.average_loss(self.data_manager.num_batches["TEST"])
         self.logger.write_loss("TEST")
         if (self.args.epoch % self.args.log_save_freq == 0):
-            self.logger.save_txt()
+            # self.logger.save_txt(["x", "y", "recon", "rot", "l", "w"])
             self.logger.save_fig()
         
         self.logger.reset()
@@ -148,5 +150,12 @@ class MOETrainer():
             self.test()
             if (self.args.epoch % self.args.model_save_freq == 0):
                 self.moe.save_dict()
+                if self.args.epoch > self.args.e2e_epoch:
+                    for expert in self.moe.experts:
+                        expert.save_dict(fine_tune=True)
+            self.args.epoch += 1
+            if self.args.epoch > self.args.e2e_epoch:
+                for expert in self.moe.experts:
+                    expert.args.epoch += 1
         print("DONE!")
 

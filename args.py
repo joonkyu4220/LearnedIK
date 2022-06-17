@@ -7,13 +7,14 @@ RESULT_PATH = os.path.join(".", "results")
 MODEL_PATH = os.path.join(".", "models")
 LOG_PATH = os.path.join(".", "runs")
 
+# LENGTHS = [0.0, 2.0, 0.67] # l0=0, l1=mean, l2=std for (gaussian)random lengths
 LENGTHS = [2.0, 2.0, 2.0]
-MIN_BOUND = -0.5
-MAX_BOUND = 0.5
+MIN_BOUND = 0.0
+MAX_BOUND = 1.0
 
 WEIGHTS = {"ee_pos":1.0, "ee_rot":1.0, "rot_norm":0.0, "rot":1.0} # ee_pos, ee_rot, rot_norm, rot
 LOSS = {"ee_pos":"L1", "ee_rot":"L1", "rot_norm":"L1", "rot":"L1"} # "L1"/"MSE" Let's keep it simple. L1.
-ACTIVATION = "LeakyReLU" # "ReLU"/"LeakyReLU"/"Tanh" Tanh is bad. ReLU and LeakyReLU are similar.
+ACTIVATION = "LeakyReLU" # "ReLU"/"LeakyReLU"/"Tanh" Tanh is bad. ReLU and LeakyReLU are similar. /  "Sigmoid" for gating net?
 WEIGHT_DECAY = 1e-3
 LEARNING_RATE = 1e-4
 OPTIMIZER = "Adam"
@@ -27,17 +28,17 @@ DATA_LABEL = {"ee_pos":(0, 2), "ee_rot":(2, 4), "rot":(0, 6)} if REPR == "COSSIN
 
 IK_VER = 1
 
-MAX_EPOCH = 400
-MODEL_SAVE_FREQ = 50
+MAX_EPOCH = 1000
+
+MODEL_SAVE_FREQ = 100
 LOG_SAVE_FREQ = 1
 VERBOSE_FREQ = 1000
 START_EPOCH = "latest"
+E2E_EPOCH = 100
 
 # MIXTURE OF EXPERTS
-GATING_VER = 0
+GATING_VER = 1
 NUM_NETS = 0
-
-
 
 class Args():
     def __init__(self,
@@ -72,9 +73,10 @@ class Args():
                 log_save_freq=LOG_SAVE_FREQ,
                 verbose_freq = VERBOSE_FREQ,
                 epoch=START_EPOCH,
+                e2e_epoch=E2E_EPOCH,
 
                 gating_ver=GATING_VER,
-                num_nets=NUM_NETS
+                num_nets=NUM_NETS,
                 ):
 
         self.device = device
@@ -108,6 +110,7 @@ class Args():
         self.log_save_freq = log_save_freq
         self.verbose_freq = verbose_freq
         self.epoch = epoch
+        self.e2e_epoch = e2e_epoch
 
         self.gating_ver = gating_ver
         self.num_nets = num_nets
@@ -116,14 +119,21 @@ class Args():
         
     def set_dirs(self):
         dir_name = ""
+
+        if self.num_nets != 0:
+            dir_name += f"GatingNet[{self.gating_ver}]"
+        else:
+            dir_name += f"IKNet[{self.ik_ver}]"
+
         dir_name += f"REPR[{self.repr},{self.normalize}]"
         dir_name += f"RANGE[{self.min_bound},{self.max_bound}]"
+
         dir_name += f"LEN[{self.lengths[0]},{self.lengths[1]},{self.lengths[2]}]"
-        if self.num_nets != 0:
-            dir_name = "[MOE]"
+
         dir_name += f"LOSS[{self.loss['ee_pos']},{self.loss['ee_rot']},{self.loss['rot_norm']},{self.loss['rot']}]"
         dir_name += f"WEIGHTS[{self.weights['ee_pos']},{self.weights['ee_rot']},{self.weights['rot_norm']},{self.weights['rot']}]"
         dir_name += f"ACTIVATION[{self.activation}]"
+
         self.dir_name = dir_name
         self.result_path = os.path.join(self.result_path, dir_name)
         self.model_path = os.path.join(self.model_path, dir_name)

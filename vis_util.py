@@ -69,10 +69,8 @@ def pos_to_color(xy):
     
     return c
 
-
 colorwheel = make_colorwheel()
 ncols = colorwheel.shape[0]
-
 
 if __name__ == "__main__":
     SIZE = 1000

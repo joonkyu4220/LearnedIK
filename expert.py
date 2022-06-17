@@ -31,6 +31,8 @@ class Expert():
             else:
                 print("!PRETRAINED MODEL NOT FOUND!\nSTARTING FROM THE TOP...")
                 self.args.epoch = 0
+            if isinstance(self.args.epoch, str):
+                self.args.epoch = int(self.args.epoch[8:])
         self.args.epoch += 1
     
     def init_nets(self):
@@ -38,6 +40,8 @@ class Expert():
             self.iknet = IKNet(self.args).to(self.args.device)
         elif self.args.ik_ver == 1:
             self.iknet = IKNet1(self.args).to(self.args.device)
+        elif self.args.ik_ver == 2:
+            self.iknet = IKNet2(self.args).to(self.args.device)
         self.fknet = FKNet(self.args).to(self.args.device)
         return
     
@@ -54,12 +58,13 @@ class Expert():
     def fk(self, rot, lengths):
         return self.fknet(rot, lengths)
     
-    def save_dict(self):
+    def save_dict(self, fine_tune = False):
+        file_name = f"{self.args.epoch}.pt" if not(fine_tune) else f"FINETUNE{self.args.epoch}.pt"
         torch.save({'epoch': self.args.epoch,
                     'iknet_state_dict': self.iknet.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     "scheduler_state_dict": self.scheduler.state_dict()},
-                    os.path.join(self.args.model_path, f"{self.args.epoch}.pt"))
+                    os.path.join(self.args.model_path, file_name))
         return
 
 class LossManager():
@@ -97,7 +102,7 @@ class ExpertTrainer():
     def train_step(self):
         self.expert.iknet.train()
         for batch, (x, y) in enumerate(self.data_manager.dataloaders["TRAIN"]):
-            rot = self.expert.ik(x[:, 3:])
+            rot = self.expert.ik(x)
             recon = self.expert.fk(rot, x[:, :3])
             loss_dic = self.loss_manager.compute_losses(x[:, 3:], y, rot, recon)
             self.logger.add_loss({key: val.item() if val else val for (key, val) in loss_dic.items()})
@@ -110,7 +115,6 @@ class ExpertTrainer():
                     print(f"{key}: {val.item() if val else val:>7f}")
         self.logger.average_loss(self.data_manager.num_batches["TRAIN"])
         self.logger.write_loss("TRAIN")
-        self.args.epoch += 1
 
         self.logger.reset()
     
@@ -118,7 +122,7 @@ class ExpertTrainer():
         self.expert.iknet.eval()
         with torch.no_grad():
             for x, y in self.data_manager.dataloaders["TEST"]:
-                rot = self.expert.ik(x[:, 3:])
+                rot = self.expert.ik(x)
                 recon = self.expert.fk(rot, x[:, :3])
                 loss_dic = self.loss_manager.compute_losses(x[:, 3:], y, rot, recon)
                 self.logger.add_loss({key: val.item() if val else val for (key, val) in loss_dic.items()})
@@ -126,7 +130,7 @@ class ExpertTrainer():
         self.logger.average_loss(self.data_manager.num_batches["TEST"])
         self.logger.write_loss("TEST")
         if (self.args.epoch % self.args.log_save_freq == 0):
-            self.logger.save_txt()
+            # self.logger.save_txt()
             self.logger.save_fig()
 
         self.logger.reset()
@@ -139,4 +143,9 @@ class ExpertTrainer():
             self.test()
             if (self.args.epoch % self.args.model_save_freq == 0):
                 self.expert.save_dict()
+            self.args.epoch += 1
+        print("DONE!")
+
+    def eval(self):
+        self.test()
         print("DONE!")

@@ -38,3 +38,30 @@ class DataManager():
     
     def get_all_data(self, mode):
         return self.datasets[mode].input, self.datasets[mode].gt
+
+
+if __name__ == "__main__":
+    from args import Args
+    args = Args()
+    datamanager = DataManager(args)
+
+    print("INPUT")
+    print("MIN")
+    print(torch.min(datamanager.datasets["TRAIN"].input, dim=0))
+    print("MAX")
+    print(torch.max(datamanager.datasets["TRAIN"].input, dim=0))
+    print("MEAN")
+    print(torch.mean(datamanager.datasets["TRAIN"].input, dim=0))
+    print("STD")
+    print(torch.std(datamanager.datasets["TRAIN"].input, dim=0))
+
+    print("GT")
+    print("MIN")
+    print(torch.min(datamanager.datasets["TRAIN"].gt, dim=0))
+    print("MAX")
+    print(torch.max(datamanager.datasets["TRAIN"].gt, dim=0))
+    print("MEAN")
+    print(torch.mean(datamanager.datasets["TRAIN"].gt, dim=0))
+    print("STD")
+    print(torch.std(datamanager.datasets["TRAIN"].gt, dim=0))
+

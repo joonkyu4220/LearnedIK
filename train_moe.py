@@ -3,11 +3,33 @@ from expert import *
 from mixture_of_experts import *
 
 if __name__ == "__main__":
-    args1 = Args(lengths=[2.0, 2.0, 2.0], min_bound=0.0, max_bound=0.5)
-    expert1 = Expert(args1)
+
+    experts = []
+    
+    args = Args(lengths=[2.0, 2.0, 2.0])
+    experts.append(Expert(args))
+
+    args = Args(lengths=[1.0, 2.0, 2.0])
+    experts.append(Expert(args))
+
+    args = Args(lengths=[2.0, 1.0, 2.0])
+    experts.append(Expert(args))
+
+    args = Args(lengths=[2.0, 2.0, 1.0])
+    experts.append(Expert(args))
+
+    args = Args(lengths=[3.0, 2.0, 2.0])
+    experts.append(Expert(args))
+
+    args = Args(lengths=[2.0, 3.0, 2.0])
+    experts.append(Expert(args))
+
+    args = Args(lengths=[2.0, 2.0, 3.0])
+    experts.append(Expert(args))
 
 
-    args = Args(num_nets=1)
-    moe = MixtureOfExperts(args, [expert1])
+    args = Args(num_nets=7)
+    moe = MixtureOfExperts(args, experts)
     trainer = MOETrainer(moe)
+
     trainer.train()

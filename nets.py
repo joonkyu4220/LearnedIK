@@ -38,7 +38,7 @@ class IKNet(nn.Module):
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.layers(x)
+        return self.layers(x[:, 3:])
 
 class IKNet1(nn.Module):
     def __init__(self, args):
@@ -66,8 +66,35 @@ class IKNet1(nn.Module):
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.layers(x)
+        return self.layers(x[:, 3:])
 
+
+class IKNet2(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        self.repr = args.repr
+        self.input_dims = [50, 50]
+        input_dim = 7 if self.repr == "COSSIN" else 6
+        layers = []
+        layers = []
+
+        layers.append(nn.BatchNorm1d(input_dim))
+
+        for output_dim in self.input_dims:
+            layers.append(nn.Linear(input_dim, output_dim))
+            layers.append(nn.BatchNorm1d(output_dim))
+            layers.append(nn.LeakyReLU())
+            input_dim = output_dim
+
+        output_dim = 6 if self.repr == "COSSIN" else 3
+        layers.append(nn.Linear(input_dim, output_dim))
+        layers.append(nn.BatchNorm1d(output_dim))
+
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.layers(x)
+        
 
 class FKNet(nn.Module):
     def __init__(self, args):
@@ -136,6 +163,41 @@ class GatingNet(nn.Module):
         output_dim = self.num_nets
         layers.append(nn.Linear(input_dim, output_dim))
         layers.append(nn.BatchNorm1d(output_dim))
+        if args.activation == "Sigmoid":
+            layers.append(nn.Sigmoid())
+
+        self.layers = nn.Sequential(*layers)
+        
+    def forward(self, x):
+        return self.layers(x)
+
+
+class GatingNet1(nn.Module):
+    def __init__(self, args):
+        super(GatingNet1, self).__init__()
+
+        self.repr = args.repr
+        self.num_nets = args.num_nets
+
+        self.input_dims = [50, 50]
+        self.dropout = 0.1
+        layers = []
+        input_dim = 7 if self.repr == "COSSIN" else 6
+        
+        layers.append(nn.BatchNorm1d(input_dim))
+
+        for output_dim in self.input_dims:
+            layers.append(nn.Linear(input_dim, output_dim))
+            layers.append(nn.BatchNorm1d(output_dim))
+            layers.append(nn.LeakyReLU())
+            layers.append(nn.Dropout(self.dropout))
+            input_dim = output_dim
+        output_dim = self.num_nets
+        layers.append(nn.Linear(input_dim, output_dim))
+        layers.append(nn.BatchNorm1d(output_dim))
+        if args.activation == "Sigmoid":
+            layers.append(nn.Sigmoid())
+
         self.layers = nn.Sequential(*layers)
         
     def forward(self, x):
