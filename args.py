@@ -10,7 +10,7 @@ LOG_PATH = os.path.join(".", "runs")
 # LENGTHS = [0.0, 2.0, 0.67] # l0=0, l1=mean, l2=std for (gaussian)random lengths
 LENGTHS = [2.0, 2.0, 2.0]
 MIN_BOUND = 0.0
-MAX_BOUND = 1.0
+MAX_BOUND = 2.0
 
 WEIGHTS = {"ee_pos":1.0, "ee_rot":1.0, "rot_norm":0.0, "rot":1.0} # ee_pos, ee_rot, rot_norm, rot
 LOSS = {"ee_pos":"L1", "ee_rot":"L1", "rot_norm":"L1", "rot":"L1"} # "L1"/"MSE" Let's keep it simple. L1.
@@ -28,7 +28,7 @@ DATA_LABEL = {"ee_pos":(0, 2), "ee_rot":(2, 4), "rot":(0, 6)} if REPR == "COSSIN
 
 IK_VER = 1
 
-MAX_EPOCH = 1000
+MAX_EPOCH = 300
 
 MODEL_SAVE_FREQ = 100
 LOG_SAVE_FREQ = 1

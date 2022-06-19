@@ -59,7 +59,7 @@ class Expert():
         return self.fknet(rot, lengths)
     
     def save_dict(self, fine_tune = False):
-        file_name = f"{self.args.epoch}.pt" if not(fine_tune) else f"FINETUNE{self.args.epoch}.pt"
+        file_name = f"{self.args.epoch}.pt" if not(fine_tune) else f"FINETUNE_RANGE{self.args.epoch}.pt"
         torch.save({'epoch': self.args.epoch,
                     'iknet_state_dict': self.iknet.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
